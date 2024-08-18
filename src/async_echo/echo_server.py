@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import socket
 from asyncio import AbstractEventLoop
 
@@ -11,10 +12,17 @@ RECEIVE_BYTES_LEN = 32
 async def echo(connection: socket, loop: AbstractEventLoop) -> None:
     # loop forever, waiting for data from client connection
     con_addr, con_port = connection.getpeername()
-    while data := await loop.sock_recv(connection, RECEIVE_BYTES_LEN):
-        # once we have data, send it back to client
-        print(f"Received data {data}[{len(data)}], from conn: {con_addr}:{con_port}")
-        await loop.sock_sendall(connection, data)
+    try:
+        while data := await loop.sock_recv(connection, RECEIVE_BYTES_LEN):
+            # once we have data, send it back to client
+            print(f"Received data {data}[{len(data)}], from conn: {con_addr}:{con_port}")
+            if data == b"boom\r\n":
+                raise RuntimeError("Boom received!")
+            await loop.sock_sendall(connection, data)
+    except Exception as e:
+        logging.exception(e)
+    finally:
+        connection.close()
 
 
 async def listen_for_connection(server_socket: socket, loop: AbstractEventLoop) -> None:
